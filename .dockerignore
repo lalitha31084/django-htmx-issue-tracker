@@ -1,0 +1,38 @@
+# Keep the build context small and prevent host artefacts from leaking into
+# the image (a local db.sqlite3 or .env must never be baked into the image).
+
+.git
+.gitignore
+.github
+
+# Secrets / local configuration
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Django
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+*.log
+
+# Local tooling
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db

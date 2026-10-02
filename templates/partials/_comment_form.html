@@ -1,0 +1,45 @@
+{% comment %}
+Inline "add a comment" form.
+
+Used in two situations:
+1. Included by ``issue_detail.html`` for the base (no-JS) layer.
+2. Rendered on its own by ``add_comment`` when an enhanced submission failed
+   validation, so the error message appears inline without a page reload.
+{% endcomment %}
+
+<form class="comment-form"
+      id="comment-form"
+      method="post"
+      action="{% url 'comment_add' issue.pk %}"
+      hx-post="{% url 'comment_add' issue.pk %}"
+      hx-target="#comments-list"
+      hx-swap="beforeend"
+      hx-on::after-request="if (event.detail.successful) this.reset()"
+      novalidate>
+
+  {% csrf_token %}
+
+  {# Errors are rendered server-side, which is what makes the no-JS path work. #}
+  {% if form.non_field_errors %}
+    <div class="alert alert--error" role="alert">
+      {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+    </div>
+  {% endif %}
+
+  <div class="field">
+    <label for="{{ form.content.id_for_label }}" class="field-label">
+      {{ form.content.label }}
+    </label>
+    {{ form.content }}
+    {% if form.content.errors %}
+      <ul class="field-errors" role="alert">
+        {% for error in form.content.errors %}<li>{{ error }}</li>{% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+
+  {# ``novalidate`` disables the browser's native validation bubbles so that both
+     modes surface errors through the same server-rendered markup. #}
+  <button type="submit" class="button">Add comment</button>
+  <span class="htmx-indicator" aria-hidden="true">…</span>
+</form>

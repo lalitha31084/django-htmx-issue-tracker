@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% load tracker_tags %}
+
+{% block title %}Dashboard · Issue Tracker{% endblock %}
+
+{% block content %}
+<header class="page-header">
+  <div>
+    <h1>Dashboard</h1>
+    <p class="page-header__description">
+      An overview of everything in the tracker. Rendered entirely on the server.
+    </p>
+  </div>
+</header>
+
+<section class="stat-grid" aria-label="Key figures">
+  <div class="stat-card">
+    <p class="stat-card__value">{{ total_issues }}</p>
+    <p class="stat-card__label">Total issues</p>
+  </div>
+  <div class="stat-card">
+    <p class="stat-card__value">{{ open_issues }}</p>
+    <p class="stat-card__label">Open issues</p>
+  </div>
+  <div class="stat-card">
+    <p class="stat-card__value">{{ projects|length }}</p>
+    <p class="stat-card__label">Projects</p>
+  </div>
+  <div class="stat-card">
+    <p class="stat-card__value">{{ total_comments }}</p>
+    <p class="stat-card__label">Comments</p>
+  </div>
+</section>
+
+<section class="panel" aria-labelledby="recent-heading">
+  <h2 id="recent-heading" class="panel__title">Recent activity</h2>
+
+  {% if recent_issues %}
+    <table class="table">
+      <caption class="visually-hidden">Recently updated issues</caption>
+      <thead>
+        <tr>
+          <th scope="col">Issue</th>
+          <th scope="col">Project</th>
+          <th scope="col">Status</th>
+          <th scope="col">Comments</th>
+          <th scope="col">Updated</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for issue in recent_issues %}
+          <tr>
+            <td><a href="{{ issue.get_absolute_url }}">#{{ issue.pk }} {{ issue.title }}</a></td>
+            <td><a href="{{ issue.project.get_absolute_url }}">{{ issue.project.name }}</a></td>
+            <td>{% status_badge issue.status %}</td>
+            <td>{{ issue.comment_total }}</td>
+            <td>{{ issue.updated_at|timesince }} ago</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="empty-state">Nothing has been tracked yet. Create a project to get started.</p>
+  {% endif %}
+</section>
+
+<section class="panel" aria-labelledby="projects-heading">
+  <h2 id="projects-heading" class="panel__title">Projects</h2>
+  <ul class="project-grid">
+    {% for project in projects %}
+      <li class="project-card">
+        <h3 class="project-card__title"><a href="{{ project.get_absolute_url }}">{{ project.name }}</a></h3>
+        <p class="project-card__meta">{{ project.total_issues }} issue{{ project.total_issues|pluralize }}</p>
+      </li>
+    {% empty %}
+      <li class="empty-state">No projects yet.</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

@@ -1,0 +1,93 @@
+{% comment %}
+Reusable issue card.
+
+This is the single source of truth for how an issue is rendered:
+
+* ``project_board.html`` includes it while iterating the board columns (SSR).
+* ``update_issue_status`` renders it on its own for ``HX-Request`` clients.
+
+Because both paths share the template, the enhanced card can never drift out of
+sync with the server-rendered one.
+
+Progressive enhancement design:
+* The status buttons are real ``<button type="submit">`` elements inside a real
+  ``<form method="post">``. With JavaScript disabled they POST and the server
+  answers with a 302 redirect (full page reload).
+* ``hx-post``/``hx-target`` simply upgrade that same form to an AJAX request.
+  There is no separate "JS-only" markup path.
+{% endcomment %}
+{% load tracker_tags %}
+
+<article class="issue-card" id="issue-{{ issue.pk }}"
+         data-issue-id="{{ issue.pk }}"
+         data-status="{{ issue.status }}"
+         data-status-slug="{{ issue.status_slug }}"
+         {% if status_error %}data-error="1"{% endif %}>
+
+  <header class="issue-card__header">
+    {% status_badge issue.status %}
+    <span class="issue-card__id">#{{ issue.pk }}</span>
+  </header>
+
+  {% if status_error %}
+    <p class="alert alert--error" role="alert">{{ status_error|join:" " }}</p>
+  {% endif %}
+
+  <h3 class="issue-card__title">
+    <a href="{{ issue.get_absolute_url }}">{{ issue.title }}</a>
+  </h3>
+
+  {% if issue.description %}
+    <p class="issue-card__description">{{ issue.description|excerpt:120 }}</p>
+  {% endif %}
+
+  <footer class="issue-card__footer">
+    <a class="issue-card__link" href="{{ issue.get_absolute_url }}">
+      {{ issue.comment_count }} comment{{ issue.comment_count|pluralize }}
+    </a>
+    <time datetime="{{ issue.updated_at|date:'c' }}">{{ issue.updated_at|timesince }} ago</time>
+  </footer>
+
+  {# ------------------------------------------------------------------ #}
+  {# Base layer: a standard HTML form. Works with JS disabled (full reload). #}
+  {# ------------------------------------------------------------------ #}
+  <form class="issue-card__status-form"
+        method="post"
+        action="{% url 'issue_update_status' issue.pk %}"
+        hx-post="{% url 'issue_update_status' issue.pk %}"
+        hx-target="#issue-{{ issue.pk }}"
+        hx-swap="outerHTML"
+        hx-indicator="#status-indicator-{{ issue.pk }}"
+        hx-disabled-elt="this">
+    {% csrf_token %}
+    <input type="hidden" name="status" id="status-{{ issue.pk }}" value="{{ issue.next_status }}">
+
+    <button type="submit" class="button button--sm">
+      Move to {% next_status issue %}
+    </button>
+    <span class="htmx-indicator" id="status-indicator-{{ issue.pk }}" aria-hidden="true">…</span>
+  </form>
+
+  {# One button per remaining status. Progressive enhancement with the same
+     form: each button carries its own name/value pair so a no-JS POST still
+     sends the status the user actually clicked. #}
+  <form class="issue-card__status-menu"
+        method="post"
+        action="{% url 'issue_update_status' issue.pk %}"
+        hx-post="{% url 'issue_update_status' issue.pk %}"
+        hx-target="#issue-{{ issue.pk }}"
+        hx-swap="outerHTML"
+        hx-disabled-elt="this">
+    {% csrf_token %}
+    <span class="issue-card__status-menu-label">Set status:</span>
+    {% for status in issue.available_transitions %}
+      <button type="submit"
+              class="button button--ghost button--xs"
+              name="status"
+              value="{{ status }}"
+              title="Move to {{ status }}">
+        {{ status }}
+      </button>
+    {% endfor %}
+  </form>
+</article>

@@ -1,0 +1,28 @@
+{% comment %}
+A single comment. Rendered inline by ``issue_detail.html`` (SSR) and returned
+alone when an enhanced client posts a new comment.
+
+The root element is an ``<li>`` so it can be swapped in with
+``hx-swap="beforeend"`` on the ``<ul id="comments-list">``.
+{% endcomment %}
+<li class="comment" id="comment-{{ comment.pk }}" data-comment-id="{{ comment.pk }}">
+  <div class="comment__meta">
+    <span class="comment__author">{{ comment_author|default:"Anonymous" }}</span>
+    <time datetime="{{ comment.created_at|date:'c' }}">{{ comment.created_at|timesince }} ago</time>
+  </div>
+  <div class="comment__body">{{ comment.content|linebreaksbr }}</div>
+
+  {# Deleting a comment is optional behaviour layered on top of the base layer:
+     the button lives in a POST form, so it also works without JavaScript. #}
+  <form method="post"
+        action="{% url 'comment_delete' comment.pk %}"
+        hx-post="{% url 'comment_delete' comment.pk %}"
+        hx-target="#comment-{{ comment.pk }}"
+        hx-swap="outerHTML"
+        class="comment__actions">
+    {% csrf_token %}
+    <button type="submit" class="link-button link-button--danger" title="Delete this comment">
+      Delete
+    </button>
+  </form>
+</li>

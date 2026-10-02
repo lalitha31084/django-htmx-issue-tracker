@@ -1,0 +1,8 @@
+{% comment %}
+Minimal fragment rendered after an enhanced delete, so the swapped-out element
+leaves behind a small, self-explanatory notice instead of a blank gap.
+
+Deliberately contains no ``<html>``/``<body>`` tags: it is an HTML fragment, not
+a page.
+{% endcomment %}
+<div class="notice" role="status">{{ message }}</div>

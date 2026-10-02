@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% load tracker_tags %}
+
+{% block title %}{{ project.name }} · Issue Tracker{% endblock %}
+{% block description %}{{ project.description|default:"Issue board for" }} {{ project.name }}{% endblock %}
+
+{% block content %}
+<header class="page-header">
+  <div>
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a href="{% url 'project_list' %}">Projects</a>
+      <span aria-hidden="true">/</span>
+      <span aria-current="page">{{ project.name }}</span>
+    </nav>
+    <h1>{{ project.name }}</h1>
+    {% if project.description %}
+      <p class="page-header__description">{{ project.description }}</p>
+    {% endif %}
+  </div>
+
+  <div class="page-header__stats">
+    <p class="stat">
+      <strong>{{ project.issue_count }}</strong> issue{{ project.issue_count|pluralize }}
+      · <strong>{{ project.open_issue_count }}</strong> open
+    </p>
+    {% progress_percent project as done_percent %}
+    <p class="stat stat--progress">
+      Progress: <strong>{{ done_percent }}%</strong> done
+      <span class="progress" role="img" aria-label="{{ done_percent }} percent complete">
+        <span class="progress__bar" style="width: {{ done_percent }}%"></span>
+      </span>
+    </p>
+    <a class="button button--ghost" href="{% url 'project_edit' project.pk %}">Edit project</a>
+  </div>
+</header>
+
+{# -------------------------------------------------------------------- #}
+{# "New issue" form.                                                   #}
+{#                                                                      #}
+{# Base layer: a plain form posting to the create URL; the server        #}
+{# redirects back here (full page reload).                             #}
+{# Enhancement: the same form also carries hx-post/hx-target/hx-swap, so #}
+{# HTMX re-renders just the destination column instead.                 #}
+{# hx-boost is intentionally NOT used here - keep the base semantics.   #}
+{# -------------------------------------------------------------------- #}
+<section class="panel" aria-labelledby="new-issue-heading">
+  <h2 id="new-issue-heading" class="panel__title">New issue</h2>
+  {% include "partials/_issue_form.html" %}
+</section>
+
+{# -------------------------------------------------------------------- #}
+{# The board: one section per status, fully rendered server-side.        #}
+{# -------------------------------------------------------------------- #}
+<section class="board" aria-label="Issue board for {{ project.name }}">
+  {% for column in columns %}
+    {% include "partials/_issue_column.html" %}
+  {% endfor %}
+</section>
+
+<p class="board__hint">
+  Tip: every control above is a real HTML form. Disable JavaScript and the whole
+  board still works — it just reloads the page on every change.
+</p>
+{% endblock %}

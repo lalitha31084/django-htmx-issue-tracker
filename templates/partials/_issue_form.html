@@ -1,0 +1,56 @@
+{% comment %}
+Inline "new issue" form for the board. Doubles as the enhanced fragment returned
+by ``issue_create`` when validation fails.
+{% endcomment %}
+<form class="issue-form issue-form--inline"
+      id="new-issue-form"
+      method="post"
+      action="{% url 'issue_create' project.pk %}"
+      hx-post="{% url 'issue_create' project.pk %}"
+      hx-target="#column-{{ form.status.value|default:''|slugify }}"
+      hx-swap="outerHTML"
+      novalidate>
+
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+    <div class="alert alert--error" role="alert">
+      {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+    </div>
+  {% endif %}
+
+  <div class="form-grid">
+    <div class="field">
+      <label for="{{ form.title.id_for_label }}" class="field-label">Title</label>
+      {{ form.title }}
+      {% if form.title.errors %}
+        <ul class="field-errors" role="alert">
+          {% for error in form.title.errors %}<li>{{ error }}</li>{% endfor %}
+        </ul>
+      {% endif %}
+    </div>
+
+    <div class="field">
+      <label for="{{ form.description.id_for_label }}" class="field-label">Description</label>
+      {{ form.description }}
+      {% if form.description.errors %}
+        <ul class="field-errors" role="alert">
+          {% for error in form.description.errors %}<li>{{ error }}</li>{% endfor %}
+        </ul>
+      {% endif %}
+    </div>
+
+    <div class="field">
+      <label for="{{ form.status.id_for_label }}" class="field-label">Status</label>
+      {{ form.status }}
+      {% if form.status.errors %}
+        <ul class="field-errors" role="alert">
+          {% for error in form.status.errors %}<li>{{ error }}</li>{% endfor %}
+        </ul>
+      {% endif %}
+    </div>
+  </div>
+
+  <button type="submit" class="button">Create issue</button>
+  <span class="htmx-indicator" aria-hidden="true">…</span>
+</form>

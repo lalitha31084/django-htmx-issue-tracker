@@ -1,0 +1,30 @@
+{% comment %}
+A single board column (one status). Rendered by ``project_board.html`` during
+SSR and re-rendered on its own when an enhanced client creates or deletes an
+issue. Its root element carries a stable id so HTMX can target it.
+{% endcomment %}
+{% load tracker_tags %}
+
+<section class="board__column board__column--{{ column.slug }}"
+         id="column-{{ column.slug }}"
+         data-status="{{ column.value }}"
+         data-status-slug="{{ column.slug }}"
+         aria-labelledby="column-{{ column.slug }}-heading">
+
+  <header class="board__column-header">
+    <h2 class="board__column-title" id="column-{{ column.slug }}-heading">
+      {{ column.label }}
+      <span class="board__count" data-count-for="{{ column.slug }}">{{ column.count }}</span>
+    </h2>
+  </header>
+
+  <div class="board__column-body"
+       id="column-{{ column.slug }}-body"
+       data-status="{{ column.value }}">
+    {% for issue in column.issues %}
+      {% include "partials/_issue_card.html" %}
+    {% empty %}
+      <p class="board__empty">No issues here yet.</p>
+    {% endfor %}
+  </div>
+</section>

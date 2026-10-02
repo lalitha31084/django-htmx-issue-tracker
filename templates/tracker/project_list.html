@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Projects · Issue Tracker{% endblock %}
+
+{% block content %}
+<header class="page-header">
+  <div>
+    <h1>Projects</h1>
+    <p class="page-header__description">
+      Every project in the tracker. Pick one to open its issue board.
+    </p>
+  </div>
+</header>
+
+{% if projects %}
+  {% include "partials/_project_list.html" %}
+{% else %}
+  <p class="empty-state">
+    No projects yet. Create the first one below.
+  </p>
+{% endif %}
+
+<section class="panel" aria-labelledby="new-project-heading">
+  <h2 id="new-project-heading" class="panel__title">New project</h2>
+
+  {# Base layer: plain POST + 302 redirect. The enhancement layer (hx-post on
+     the same form) re-renders the list only. #}
+  <form class="form" method="post" action="{% url 'project_create' %}">
+    {% csrf_token %}
+    <div class="form-grid">
+      <div class="field">
+        <label for="{{ form.name.id_for_label }}" class="field-label">Name</label>
+        {{ form.name }}
+        {% if form.name.errors %}
+          <ul class="field-errors" role="alert">
+            {% for error in form.name.errors %}<li>{{ error }}</li>{% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+      <div class="field">
+        <label for="{{ form.description.id_for_label }}" class="field-label">Description</label>
+        {{ form.description }}
+        {% if form.description.errors %}
+          <ul class="field-errors" role="alert">
+            {% for error in form.description.errors %}<li>{{ error }}</li>{% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+    </div>
+    <button type="submit" class="button">Create project</button>
+  </form>
+</section>
+{% endblock %}

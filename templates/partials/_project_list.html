@@ -1,0 +1,23 @@
+{% load tracker_tags %}
+{% comment %}
+The project list itself, isolated in a partial so that ``project_create`` can
+re-render just this block for an enhanced client.
+{% endcomment %}
+<ul class="project-grid" id="project-list">
+  {% for project in projects %}
+    <li class="project-card">
+      <h2 class="project-card__title">
+        <a href="{{ project.get_absolute_url }}">{{ project.name }}</a>
+      </h2>
+      {% if project.description %}
+        <p class="project-card__description">{{ project.description|excerpt:160 }}</p>
+      {% endif %}
+      <p class="project-card__meta">
+        {{ project.total_issues }} issue{{ project.total_issues|pluralize }}
+        · <a href="{% url 'project_edit' project.pk %}">Edit</a>
+      </p>
+    </li>
+  {% empty %}
+    <li class="empty-state">No projects yet. Create the first one below.</li>
+  {% endfor %}
+</ul>

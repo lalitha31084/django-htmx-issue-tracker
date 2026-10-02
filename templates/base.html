@@ -1,0 +1,86 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Issue Tracker{% endblock %}</title>
+  <meta name="description" content="{% block description %}A progressively enhanced issue tracker built with Django and HTMX.{% endblock %}">
+
+  {# Progressive enhancement #1: the page renders and works without this
+     stylesheet. It is loaded last (non-blocking) so a slow CSS request never
+     delays first paint. #}
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+
+  {# Progressive enhancement #2: htmx.org itself. Loaded with `defer`, so it is
+     a no-op when disabled and never blocks rendering. #}
+  <script src="{% static 'js/htmx.min.js' %}" defer></script>
+
+  <script>
+    // Inlined on purpose: this tiny bootstrap must run before htmx processes the
+    // document, and it guarantees the CSRF token is attached to every HTMX
+    // request even if the deferred bundle fails to load.
+    window.ISSUE_TRACKER = {
+      csrfToken: "{{ csrf_token }}",
+      debug: {% if DEBUG %}true{% else %}false{% endif %}
+    };
+    document.addEventListener("htmx:configRequest", function (event) {
+      event.detail.headers["X-CSRFToken"] = window.ISSUE_TRACKER.csrfToken;
+    });
+  </script>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+
+  <header class="site-header">
+    <div class="container site-header__inner">
+      <a class="brand" href="{% url 'dashboard' %}">
+        <span class="brand__mark" aria-hidden="true">▦</span>
+        <span class="brand__name">Issue&nbsp;Tracker</span>
+      </a>
+
+      <nav class="site-nav" aria-label="Main navigation">
+        <a href="{% url 'project_list' %}" class="{% if request.resolver_match.url_name == 'project_list' %}is-active{% endif %}">Projects</a>
+        <a href="{% url 'dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}is-active{% endif %}">Dashboard</a>
+      </nav>
+
+      <div class="site-header__meta">
+        <span class="pill" id="js-status" title="Shows whether the progressive enhancement layer is active">
+          JS <strong>unknown</strong>
+        </span>
+        {% if user.is_authenticated %}
+          <form method="post" action="{% url 'logout' %}" class="inline-form">
+            {% csrf_token %}
+            <button type="submit" class="link-button">Log out {{ user.username }}</button>
+          </form>
+        {% else %}
+          <a href="{% url 'login' %}?next={{ request.path|urlencode }}">Log in</a>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+
+  {# Flash messages are rendered on the server, so they appear with or without
+     JavaScript. Enhanced requests also get them as an out-of-band swap. #}
+  {% include "partials/_messages.html" %}
+
+  <main id="main-content" class="container">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>
+        Built with Django &amp; HTMX · server-rendered first, enhanced second.
+        Works with JavaScript disabled.
+      </p>
+    </div>
+  </footer>
+
+  {# Optional vanilla-JS enhancements (drag & drop, oob swaps, indicators).
+     Loaded last and wrapped in try/catch so a failure can never break the
+     server-rendered page. #}
+  <script src="{% static 'js/enhancements.js' %}" defer></script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

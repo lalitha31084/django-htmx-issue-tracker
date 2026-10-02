@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}
+  {% if issue %}Edit issue #{{ issue.pk }}{% else %}New issue{% endif %} · Issue Tracker
+{% endblock %}
+
+{% block content %}
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <a href="{% url 'project_list' %}">Projects</a>
+  <span aria-hidden="true">/</span>
+  <a href="{{ project.get_absolute_url }}">{{ project.name }}</a>
+  <span aria-hidden="true">/</span>
+  <span aria-current="page">
+    {% if issue %}Edit issue{% else %}New issue{% endif %}
+  </span>
+</nav>
+
+<h1>{% if issue %}Edit issue #{{ issue.pk }}{% else %}New issue in {{ project.name }}{% endif %}</h1>
+
+{# Base layer: plain POST form; the server redirects on success (302). #}
+<form class="form panel" method="post"
+      action="{% if issue %}{% url 'issue_edit' issue.pk %}{% else %}{% url 'issue_create' project.pk %}{% endif %}">
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+    <div class="alert alert--error" role="alert">
+      {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+    </div>
+  {% endif %}
+
+  <div class="field">
+    <label for="{{ form.title.id_for_label }}" class="field-label">Title</label>
+    {{ form.title }}
+    {% if form.title.errors %}
+      <ul class="field-errors" role="alert">
+        {% for error in form.title.errors %}<li>{{ error }}</li>{% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+
+  <div class="field">
+    <label for="{{ form.description.id_for_label }}" class="field-label">Description</label>
+    {{ form.description }}
+    {% if form.description.errors %}
+      <ul class="field-errors" role="alert">
+        {% for error in form.description.errors %}<li>{{ error }}</li>{% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+
+  <div class="field">
+    <label for="{{ form.status.id_for_label }}" class="field-label">Status</label>
+    {{ form.status }}
+    {% if form.status.errors %}
+      <ul class="field-errors" role="alert">
+        {% for error in form.status.errors %}<li>{{ error }}</li>{% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+
+  <div class="form__actions">
+    <button type="submit" class="button">Save</button>
+    <a class="button button--ghost" href="{% if issue %}{{ issue.get_absolute_url }}{% else %}{{ project.get_absolute_url }}{% endif %}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

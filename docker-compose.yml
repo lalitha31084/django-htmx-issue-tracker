@@ -1,0 +1,122 @@
+# ==============================================================================
+# Issue tracker - two-service stack (Django/Gunicorn + PostgreSQL).
+#
+#   docker compose up --build -d      start everything
+#   docker compose ps                 both services report "healthy"
+#   docker compose logs -f web        watch migrations + HTMX request log
+#   docker compose down -v            stop and discard the database volume
+#
+# Nothing else is required: the entrypoint waits for PostgreSQL, applies the
+# migrations (whose data migration seeds demo projects/issues/comments) and then
+# starts Gunicorn.
+#
+# Requires Docker Compose v2+ ("docker compose ...").
+# ==============================================================================
+
+name: issue-tracker
+
+services:
+  # ------------------------------------------------------------------ db ---
+  db:
+    image: postgres:16-alpine
+    container_name: issue_tracker_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-issue_tracker}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      # Deterministic collation keeps index behaviour identical everywhere.
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      # Named volume keeps the data across restarts and rebuilds.
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      # Exposed for local inspection (psql). Comment out to keep it private.
+      - "${POSTGRES_PORT_PUBLISHED:-5432}:5432"
+    healthcheck:
+      # Runs entirely inside the container - no extra packages needed.
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-issue_tracker}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - issue_tracker
+
+  # ----------------------------------------------------------------- web ---
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: issue_tracker_web
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # --- Django -------------------------------------------------------
+      DJANGO_SETTINGS_MODULE: config.settings
+      SECRET_KEY: ${SECRET_KEY:-django-insecure-development-key-change-me}
+      DEBUG: ${DEBUG:-False}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-*}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
+      TIME_ZONE: ${TIME_ZONE:-UTC}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_HTMX_REQUESTS: ${LOG_HTMX_REQUESTS:-True}
+      # --- Database -----------------------------------------------------
+      POSTGRES_DB: ${POSTGRES_DB:-issue_tracker}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      # Optional single connection string; takes precedence when non-empty.
+      DATABASE_URL: ${DATABASE_URL:-}
+      # --- Server -------------------------------------------------------
+      PORT: 8000
+      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-3}
+      GUNICORN_THREADS: ${GUNICORN_THREADS:-2}
+      # Set to True to have the entrypoint create an admin user on boot.
+      CREATE_SUPERUSER: ${CREATE_SUPERUSER:-False}
+      DJANGO_SUPERUSER_USERNAME: ${DJANGO_SUPERUSER_USERNAME:-admin}
+      DJANGO_SUPERUSER_EMAIL: ${DJANGO_SUPERUSER_EMAIL:-admin@example.com}
+      DJANGO_SUPERUSER_PASSWORD: ${DJANGO_SUPERUSER_PASSWORD:-admin123}
+    ports:
+      - "${WEB_PORT:-8000}:8000"
+    volumes:
+      # Source is mounted read-only for convenient local development. Remove
+      # this block for a production-style deployment.
+      - ./:/app:ro
+      # Writable directories the container needs to populate.
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    healthcheck:
+      # /health/db/ actually queries PostgreSQL, so "healthy" means the whole
+      # stack works, not merely that Django is listening.
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:8000/health/db/ || exit 1",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+    networks:
+      - issue_tracker
+
+volumes:
+  postgres_data:
+    driver: local
+  static_volume:
+    driver: local
+  media_volume:
+    driver: local
+
+networks:
+  issue_tracker:
+    driver: bridge

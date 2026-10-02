@@ -1,0 +1,14 @@
+{% comment %}
+Server-rendered flash messages.
+
+Shown on full page loads. When a mutating view is called with ``HX-Request`` it
+also attaches ``hx-swap-oob="innerHTML:#messages"`` to this same fragment, which
+lets HTMX refresh the message area without re-rendering the whole page.
+{% endcomment %}
+<div id="messages" class="messages" aria-live="polite">
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert--{{ message.tags|default:'info' }}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+</div>

@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% load tracker_tags %}
+
+{% block title %}#{{ issue.pk }} {{ issue.title }} · Issue Tracker{% endblock %}
+{% block description %}{{ issue.title }} — {{ project.name }}{% endblock %}
+
+{% block content %}
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <a href="{% url 'project_list' %}">Projects</a>
+  <span aria-hidden="true">/</span>
+  <a href="{{ project.get_absolute_url }}">{{ project.name }}</a>
+  <span aria-hidden="true">/</span>
+  <span aria-current="page">#{{ issue.pk }}</span>
+</nav>
+
+<article class="issue-detail">
+  <header class="issue-detail__header">
+    <div>
+      {% status_badge issue.status %}
+      <h1 class="issue-detail__title">#{{ issue.pk }} {{ issue.title }}</h1>
+      <p class="issue-detail__meta">
+        Opened {{ issue.created_at|date:"j M Y, H:i" }} ·
+        updated {{ issue.updated_at|timesince }} ago ·
+        <a href="{{ project.get_absolute_url }}">{{ project.name }}</a>
+      </p>
+    </div>
+
+    {# ---------------------------------------------------------------- #}
+    {# Status controls. A real POST form (base layer) that HTMX upgrades. #}
+    {# ---------------------------------------------------------------- #}
+    <form class="issue-detail__status-form"
+          method="post"
+          action="{% url 'issue_update_status' issue.pk %}"
+          hx-post="{% url 'issue_update_status' issue.pk %}"
+          hx-target="#issue-detail-card"
+          hx-swap="outerHTML"
+          hx-disabled-elt="this">
+      {% csrf_token %}
+      <label class="field-label" for="status-select-{{ issue.pk }}">Status</label>
+      <select class="field-input" id="status-select-{{ issue.pk }}" name="status"
+              onchange="this.form.requestSubmit()">
+        {% for value, label in status_choices %}
+          <option value="{{ value }}" {% if value == issue.status %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <noscript>
+        <button type="submit" class="button button--sm">Update status</button>
+      </noscript>
+    </form>
+  </header>
+
+  {# The card is a target for both the HTMX status swap and the drag & drop
+     enhancement, so it has a stable id. #}
+  <div class="issue-detail__card" id="issue-detail-card"
+       data-issue-id="{{ issue.pk }}" data-status="{{ issue.status }}">
+    {% if issue.description %}
+      <div class="issue-detail__description">{{ issue.description|linebreaks }}</div>
+    {% else %}
+      <p class="issue-detail__description issue-detail__description--empty">
+        No description was provided for this issue.
+      </p>
+    {% endif %}
+
+    <footer class="issue-detail__footer">
+      <a class="button button--ghost button--sm"
+         href="{% url 'issue_edit' issue.pk %}">Edit issue</a>
+
+      {# Deleting an issue is optional, so it is POST + CSRF protected in the
+         base layer and only becomes an out-of-band swap when enhanced. #}
+      <form method="post" action="{% url 'issue_delete' issue.pk %}" class="inline-form"
+            hx-post="{% url 'issue_delete' issue.pk %}"
+            hx-target="#issue-detail-card"
+            hx-swap="outerHTML">
+        {% csrf_token %}
+        <button type="submit" class="link-button link-button--danger"
+                data-confirm="Delete this issue?">Delete issue</button>
+      </form>
+    </footer>
+  </div>
+</article>
+
+{# -------------------------------------------------------------------- #}
+{# Comments                                                            #}
+{#                                                                      #}
+{# Base layer: the <ul> is rendered server-side and the form is a plain    #}
+{# POST that redirects back to this page.                               #}
+{# Enhancement: hx-swap="beforeend" appends only the new comment and     #}
+{# hx-on::after-request resets the form - no page reload.                #}
+{# -------------------------------------------------------------------- #}
+<section class="comments" aria-labelledby="comments-heading">
+  <h2 id="comments-heading" class="panel__title">
+    Comments <span class="board__count">{{ comments|length }}</span>
+  </h2>
+
+  <ul class="comment-list" id="comments-list">
+    {% for comment in comments %}
+      {% include "partials/_comment.html" %}
+    {% empty %}
+      <li class="comment comment--empty" id="comments-empty">
+        No comments yet — be the first to leave one.
+      </li>
+    {% endfor %}
+  </ul>
+
+  {% include "partials/_comment_form.html" %}
+</section>
+{% endblock %}
